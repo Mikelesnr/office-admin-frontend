@@ -20,7 +20,6 @@ api.interceptors.request.use(async (config) => {
       });
 
       const token = data.token;
-      console.log("CSRF token from /csrf-token route:", token);
 
       if (token) {
         config.headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
