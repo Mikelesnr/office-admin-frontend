@@ -1,25 +1,25 @@
-import axios from "axios";
-import Cookies from "js-cookie";
+import axios from 'axios';
+import Cookies from 'js-cookie';
+
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const api = axios.create({
-  baseURL: "http://localhost:8000", // Laravel backend
-  withCredentials: true, // Send cookies
+  baseURL,
+  withCredentials: true,
 });
 
-// Intercept every request to ensure XSRF token is attached
 api.interceptors.request.use(async (config) => {
-  let token = Cookies.get("XSRF-TOKEN");
+  let token = Cookies.get('XSRF-TOKEN');
 
-  // If token is missing, fetch it from Laravel
   if (!token) {
-    await axios.get("http://localhost:8000/sanctum/csrf-cookie", {
+    await axios.get(`${baseURL}/sanctum/csrf-cookie`, {
       withCredentials: true,
     });
-    token = Cookies.get("XSRF-TOKEN");
+    token = Cookies.get('XSRF-TOKEN');
   }
 
   if (token) {
-    config.headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
+    config.headers['X-XSRF-TOKEN'] = decodeURIComponent(token);
   }
 
   return config;
