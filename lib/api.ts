@@ -5,37 +5,37 @@ const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const api = axios.create({
   baseURL,
-  // The 'withCredentials' option is crucial for sending and receiving cookies
-  // in cross-origin requests.
   withCredentials: true,
 });
 
-// Use an Axios request interceptor to handle the XSRF token logic
 api.interceptors.request.use(async (config) => {
-  // Get the XSRF token from the 'XSRF-TOKEN' cookie
-  let token = Cookies.get("XSRF-TOKEN");
+  // Log raw cookie string
+  console.log("document.cookie:", document.cookie);
 
-  // If the token doesn't exist, make a request to the server to get a new one.
-  // This is typically the first call to the backend.
+  // Attempt to read the XSRF token
+  let token = Cookies.get("XSRF-TOKEN");
+  console.log("Initial XSRF-TOKEN from js-cookie:", token);
+
+  // If missing, fetch CSRF cookie from backend
   if (!token) {
     try {
-      // Laravel's Sanctum provides this endpoint to set the XSRF cookie.
       await axios.get(`${baseURL}/sanctum/csrf-cookie`, {
         withCredentials: true,
       });
-      // After the request, the cookie should be set, so we fetch it again.
       token = Cookies.get("XSRF-TOKEN");
+      console.log("Fetched XSRF-TOKEN after csrf-cookie call:", token);
     } catch (error) {
       console.error("Failed to fetch XSRF cookie:", error);
-      // You might want to handle this error more gracefully, e.g., by
-      // redirecting the user or showing an error message.
     }
   }
 
-  // If a token is now available, set it in the 'X-XSRF-TOKEN' header.
-  // This is required by Laravel Sanctum for cross-domain requests.
+  // Attach token to request header if available
   if (token) {
-    config.headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
+    const decoded = decodeURIComponent(token);
+    console.log("Decoded XSRF-TOKEN attached to header:", decoded);
+    config.headers["X-XSRF-TOKEN"] = decoded;
+  } else {
+    console.warn("No XSRF-TOKEN found—request may fail with 419.");
   }
 
   return config;
