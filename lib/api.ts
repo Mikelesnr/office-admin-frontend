@@ -1,5 +1,4 @@
 import axios from "axios";
-import Cookies from "js-cookie";
 
 const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -9,33 +8,28 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  // Log raw cookie string
-  console.log("document.cookie:", document.cookie);
+  // Check if the request method requires CSRF protection
+  const method = config.method?.toUpperCase();
+  const needsCsrf = ["POST", "PUT", "PATCH", "DELETE"].includes(method || "");
 
-  // Attempt to read the XSRF token
-  let token = Cookies.get("XSRF-TOKEN");
-  console.log("Initial XSRF-TOKEN from js-cookie:", token);
-
-  // If missing, fetch CSRF cookie from backend
-  if (!token) {
+  if (needsCsrf) {
     try {
-      await axios.get(`${baseURL}/sanctum/csrf-cookie`, {
+      // Fetch CSRF token from custom backend route
+      const { data } = await axios.get(`${baseURL}/csrf-token`, {
         withCredentials: true,
       });
-      token = Cookies.get("XSRF-TOKEN");
-      console.log("Fetched XSRF-TOKEN after csrf-cookie call:", token);
-    } catch (error) {
-      console.error("Failed to fetch XSRF cookie:", error);
-    }
-  }
 
-  // Attach token to request header if available
-  if (token) {
-    const decoded = decodeURIComponent(token);
-    console.log("Decoded XSRF-TOKEN attached to header:", decoded);
-    config.headers["X-XSRF-TOKEN"] = decoded;
-  } else {
-    console.warn("No XSRF-TOKEN found—request may fail with 419.");
+      const token = data.token;
+      console.log("CSRF token from /csrf-token route:", token);
+
+      if (token) {
+        config.headers["X-XSRF-TOKEN"] = decodeURIComponent(token);
+      } else {
+        console.warn("No CSRF token returned—request may fail with 419.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch CSRF token:", error);
+    }
   }
 
   return config;
